@@ -1,0 +1,57 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and progress data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "xp": { "type": "number", "description": "Total experience points" },
+        "level": { "type": "number", "description": "Current user level" },
+        "streak": { "type": "number", "description": "Current daily streak" },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "totalCharactersLearned": { "type": "number" }
+      },
+      "required": ["uid", "xp", "level", "streak"]
+    },
+    "Progress": {
+      "title": "Progress",
+      "description": "Tracking mastery of specific characters/words",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "itemId": { "type": "string", "description": "ID of the character or word" },
+        "mastery": { "type": "number", "description": "0-100 mastery level" },
+        "lastReviewed": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "itemId", "mastery"]
+    },
+    "DailyChallenge": {
+      "title": "Daily Challenge",
+      "description": "Global daily challenge for all users",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "type": { "type": "string", "enum": ["vocabulary", "translation", "listening"] },
+        "content": { "type": "object", "description": "Challenge specific data" }
+      },
+      "required": ["date", "type", "content"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Individual user profiles"
+    },
+    "/users/{userId}/progress/{progressId}": {
+      "schema": "Progress",
+      "description": "User's learning progress for specific items"
+    },
+    "/dailyChallenges/{challengeId}": {
+      "schema": "DailyChallenge",
+      "description": "Daily challenges available to all users"
+    }
+  }
+}

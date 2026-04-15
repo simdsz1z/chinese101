@@ -1,0 +1,102 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional)
+    //   - xp: number (required, >= 0)
+    //   - level: number (required, >= 1)
+    //   - streak: number (required, >= 0)
+    //   - lastActive: timestamp (optional)
+    //   - totalCharactersLearned: number (optional)
+    //
+    // Collection: users/{userId}/progress
+    // Document ID: {progressId}
+    // Fields:
+    //   - userId: string (required)
+    //   - itemId: string (required)
+    //   - mastery: number (required, 0-100)
+    //   - lastReviewed: timestamp (required)
+    //
+    // Collection: dailyChallenges
+    // Document ID: {challengeId}
+    // Fields:
+    //   - date: string (required, YYYY-MM-DD)
+    //   - type: string (required, vocabulary/translation/listening)
+    //   - content: map (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "simosplayer1@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidUser(data) {
+      return data.uid is string &&
+             data.xp is number && data.xp >= 0 &&
+             data.level is number && data.level >= 1 &&
+             data.streak is number && data.streak >= 0;
+    }
+
+    function isValidProgress(data) {
+      return data.userId is string &&
+             data.itemId is string &&
+             data.mastery is number && data.mastery >= 0 && data.mastery <= 100 &&
+             data.lastReviewed is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Users can read their own profile, or anyone can read for leaderboard (but only public fields)
+      // For simplicity in this learning app, we allow reading public profiles for leaderboards
+      allow read: if isAuthenticated();
+      
+      allow create: if isOwner(userId) && 
+                      isValidUser(request.resource.data) && 
+                      hasOnlyAllowedFields(['uid', 'displayName', 'photoURL', 'xp', 'level', 'streak', 'lastActive', 'totalCharactersLearned', 'role']);
+      
+      allow update: if (isOwner(userId) || isAdmin()) && 
+                      isValidUser(request.resource.data) &&
+                      // Prevent self-promotion to admin
+                      (request.resource.data.role == resource.data.role || isAdmin());
+
+      match /progress/{progressId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidProgress(request.resource.data);
+      }
+    }
+
+    match /dailyChallenges/{challengeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

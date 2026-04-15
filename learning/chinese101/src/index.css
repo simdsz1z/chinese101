@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+  
+  --color-bg: #0A0A0A;
+  --color-accent: #FF3E3E;
+  --color-gold: #FFD700;
+  --color-surface: #1A1A1B;
+  --color-text-dim: rgba(255, 255, 255, 0.5);
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-bg text-white antialiased;
+  }
+}
+
+@layer components {
+  .section-label {
+    @apply text-[10px] uppercase tracking-[0.2em] text-text-dim font-bold mb-6 block;
+  }
+}
