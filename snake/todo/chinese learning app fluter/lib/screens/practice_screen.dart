@@ -247,6 +247,105 @@ class _PracticeScreenState extends State<PracticeScreen> {
     currentStroke = <Offset>[];
   }
 
+  /// Validates and checks the user's answer against the prompt type.
+  void _checkAnswer() {
+    final currentItem = items[currentIndex];
+    final response = (selectedOption ?? answerController.text)
+        .trim()
+        .toLowerCase();
+    bool correct = false;
+
+    if (currentMode == TrainingModeType.recall) {
+      // Determine what type of answer this prompt expects
+      final isPinyinPrompt =
+          currentItem.tags.contains('pinyin') ||
+          currentItem.character.contains('Meaning:');
+      final isHanziPrompt =
+          currentItem.character.contains('Draw:') ||
+          currentItem.character.contains('&');
+
+      if (isPinyinPrompt) {
+        // Check for pinyin prompts - accept exact match or prefixed format
+        final isExactPinyin = response == currentItem.pinyin.toLowerCase();
+        final isPrefixedPinyin =
+            response.startsWith('pinyin:') &&
+            response.substring(8).trim().toLowerCase() ==
+                currentItem.pinyin.toLowerCase();
+        if (isExactPinyin || isPrefixedPinyin) {
+          correct = true;
+        }
+      } else if (isHanziPrompt) {
+        // Check for hanzi prompts - accept exact match or prefixed format
+        final isExactHanzi =
+            response == currentItem.hintCharacter?.toLowerCase() ||
+            response == currentItem.answer.toLowerCase();
+        final isPrefixedHanzi =
+            response.startsWith('hanzi:') &&
+            response.substring(7).trim().toLowerCase() ==
+                currentItem.character.replaceAll('Draw: ', '').toLowerCase();
+        if (isExactHanzi || isPrefixedHanzi) {
+          correct = true;
+        }
+      } else {
+        // Default to checking against the stored answer (meaning)
+        final isExactAnswer = response == currentItem.answer.toLowerCase();
+        // Also accept hanzi for regular recall (backward compatibility)
+        final isHintCharacterMatch =
+            response == (currentItem.hintCharacter ?? '').toLowerCase();
+        if (isExactAnswer || isHintCharacterMatch) {
+          correct = true;
+        }
+      }
+    } else {
+      // MCQ speed mode - accept the selected option as valid
+      if (selectedOption != null) {
+        correct =
+            currentItem.answer.toLowerCase() == selectedOption!.toLowerCase();
+      }
+    }
+
+    // Update score and combo based on correctness
+    if (correct) {
+      score +=
+          10 +
+          _speedBonus() +
+          (usesInputMode ? 10 : 0) +
+          (usesDrawingMode ? 12 : 0);
+      combo += 1;
+    } else {
+      combo = 0;
+      context.read<GamificationService>().recordMistake(
+        currentItem.hintCharacter ?? currentItem.character,
+      );
+    }
+
+    setState(() {
+      isCorrect = correct;
+    });
+  }
+
+  /// Returns formatted feedback text based on whether the answer was correct.
+  String _feedbackText() {
+    final currentItem = items[currentIndex];
+    // For wrong answers - show correct answer with pinyin and meaning
+    if (!isCorrect!) {
+      return 'Incorrect!\n\nCorrect answer: ${currentItem.answer}';
+    }
+
+    // For correct answers - show celebratory feedback with details
+    final parts = <String>['Correct!'];
+
+    // Add pinyin for recall mode
+    if (currentMode == TrainingModeType.recall) {
+      parts.add('Pinyin: ${currentItem.pinyin}');
+    }
+
+    // Add meaning
+    parts.add('Meaning: ${currentItem.answer}');
+
+    return parts.join('\n\n');
+  }
+
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
@@ -535,38 +634,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                           : selectedOption == null && !usesInputMode)
                       ? null
                       : () {
-                          final bool correct;
-                          if (usesDrawingMode) {
-                            correct =
-                                _drawPointCount >= 24 && _drawStrokeCount >= 1;
-                          } else {
-                            final response =
-                                (selectedOption ?? answerController.text)
-                                    .trim()
-                                    .toLowerCase();
-                            correct =
-                                response == item.answer.toLowerCase() ||
-                                response == item.character.toLowerCase() ||
-                                response == item.pinyin.toLowerCase() ||
-                                response ==
-                                    (item.hintCharacter ?? '').toLowerCase();
-                          }
-                          setState(() {
-                            isCorrect = correct;
-                            if (correct) {
-                              score +=
-                                  10 +
-                                  _speedBonus() +
-                                  (usesInputMode ? 10 : 0) +
-                                  (usesDrawingMode ? 12 : 0);
-                              combo += 1;
-                            } else {
-                              combo = 0;
-                              context.read<GamificationService>().recordMistake(
-                                item.hintCharacter ?? item.character,
-                              );
-                            }
-                          });
+                          _checkAnswer();
                         },
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(58),
@@ -598,12 +666,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          isCorrect!
-                              ? (usesDrawingMode
-                                    ? 'Nice writing practice'
-                                    : 'Correct')
-                              : 'Answer: ${item.answer}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          _feedbackText(),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: usesDrawingMode ? 16 : 18,
+                          ),
                         ),
                       ),
                       FilledButton(
