@@ -56,7 +56,7 @@ class _MainNavigationState extends State<MainNavigation> {
   // Simple routing paths that maintain stability across navigation changes
   static const List<Widget> _screens = [
     HomeScreen(),
-    SessionHubScreen(scope: SessionScope.revise),
+    SessionHubScreen(scope: SessionScope.review),
     ProgressScreen(),
     ProfileScreen(),
   ];

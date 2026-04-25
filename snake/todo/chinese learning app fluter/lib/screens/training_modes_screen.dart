@@ -175,7 +175,7 @@ class TrainingModesScreen extends StatelessWidget {
         MaterialPageRoute(
           builder: (_) => SessionHubScreen(
             scope: mode.type == TrainingModeType.errorBoss
-                ? SessionScope.revise
+                ? SessionScope.review
                 : SessionScope.playground,
           ),
         ),

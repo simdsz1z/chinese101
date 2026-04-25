@@ -114,7 +114,7 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _infoCard(
-                      title: 'XP to next level',
+                      title: 'XP to next lesson',
                       value: '${service.xpToNextLevel}',
                       subtitle:
                           'Complete lessons in order to build your vocabulary progressively.',
@@ -351,7 +351,7 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  child: Text('Next Level: $title'),
+                  child: Text('Next Lesson: $title'),
                 ),
               ),
               const SizedBox(width: 12),
