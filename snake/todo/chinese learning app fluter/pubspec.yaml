@@ -1,0 +1,26 @@
+name: chinese_learning_app
+description: A production-ready Flutter Chinese Learning App with rich gamification
+
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  provider: ^6.1.1
+  shared_preferences: ^2.5.3
+  shared_preferences_web: ^2.4.3
+  cupertino_icons: ^1.0.8
+  fl_chart: ^0.69.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
