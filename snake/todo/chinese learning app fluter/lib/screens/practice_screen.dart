@@ -8,6 +8,167 @@ import '../models/study_content.dart';
 import '../models/training_mode.dart';
 import '../theme/app_theme.dart';
 
+class _PracticeItem {
+  final String character;
+  final String pinyin;
+  final String answer;
+  final List<String> options;
+  final int level;
+  final String category;
+  final List<String> tags;
+  final TrainingModeType mode;
+  final String? hintCharacter;
+
+  const _PracticeItem({
+    required this.character,
+    required this.pinyin,
+    required this.answer,
+    required this.options,
+    this.level = 0,
+    this.category = '',
+    this.tags = const [],
+    this.mode = TrainingModeType.mcq,
+    this.hintCharacter,
+  });
+
+  factory _PracticeItem.fromMap(Map<String, dynamic> map) {
+    return _PracticeItem(
+      character: map['char'] as String? ?? '',
+      pinyin: map['pinyin'] as String? ?? '',
+      answer: map['meaning'] as String? ?? '',
+      options: (map['options'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      level: map['level'] as int? ?? 0,
+      category: map['category'] as String? ?? '',
+      tags: (map['tags'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      mode: map['mode'] as TrainingModeType? ?? TrainingModeType.mcq,
+      hintCharacter: map['char'] as String?,
+    );
+  }
+}
+
+class _DrawingPad extends StatelessWidget {
+  final String targetCharacter;
+  final List<List<Offset>> strokes;
+  final List<Offset> currentStroke;
+  final ValueChanged<DragStartDetails> onPanStart;
+  final ValueChanged<DragUpdateDetails> onPanUpdate;
+  final VoidCallback onPanEnd;
+  final VoidCallback onClear;
+
+  const _DrawingPad({
+    required this.targetCharacter,
+    required this.strokes,
+    required this.currentStroke,
+    required this.onPanStart,
+    required this.onPanUpdate,
+    required this.onPanEnd,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          height: 320,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Text(
+                  targetCharacter,
+                  style: TextStyle(
+                    fontSize: 150,
+                    fontWeight: FontWeight.w200,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: GestureDetector(
+                    onPanStart: onPanStart,
+                    onPanUpdate: onPanUpdate,
+                    onPanEnd: (_) => onPanEnd(),
+                    child: CustomPaint(
+                      painter: _StrokePainter(
+                        strokes: strokes,
+                        currentStroke: currentStroke,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: OutlinedButton.icon(
+                  onPressed: onClear,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Clear'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Trace over the faded hanzi or write it from memory, then submit.',
+          style: TextStyle(color: AppColors.textDim),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+}
+
+class _StrokePainter extends CustomPainter {
+  final List<List<Offset>> strokes;
+  final List<Offset> currentStroke;
+
+  const _StrokePainter({required this.strokes, required this.currentStroke});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.accent
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+
+    for (final stroke in strokes) {
+      _drawStroke(canvas, stroke, paint);
+    }
+    _drawStroke(canvas, currentStroke, paint);
+  }
+
+  void _drawStroke(Canvas canvas, List<Offset> points, Paint paint) {
+    if (points.length < 2) return;
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (final point in points.skip(1)) {
+      path.lineTo(point.dx, point.dy);
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _StrokePainter oldDelegate) {
+    return oldDelegate.strokes != strokes ||
+        oldDelegate.currentStroke != currentStroke;
+  }
+}
+
 class PracticeScreen extends StatefulWidget {
   final String lessonId;
   final TrainingModeType trainingMode;
@@ -506,6 +667,16 @@ class _PracticeScreenState extends State<PracticeScreen> {
                             : FontWeight.w200,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    if (_getSubtitle().isNotEmpty)
+                      Text(
+                        _getSubtitle(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textDim,
+                          fontSize: 13,
+                        ),
+                      ),
                     Text(
                       item.pinyin.toUpperCase(),
                       style: const TextStyle(
@@ -515,7 +686,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     ),
                     const SizedBox(height: 28),
                     Text(
-                      _answerTypeLabel(),
+                      _getAnswerTypeLabel(),
                       style: const TextStyle(
                         fontSize: 16,
                         color: AppColors.textDim,
@@ -534,7 +705,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     const SizedBox(height: 24),
                     if (usesDrawingMode)
                       _DrawingPad(
-                        targetCharacter: item.hintCharacter ?? item.answer,
+                        targetCharacter: item.hintCharacter ?? item.character,
                         strokes: strokes,
                         currentStroke: currentStroke,
                         onPanStart: (details) {
@@ -706,17 +877,62 @@ class _PracticeScreenState extends State<PracticeScreen> {
   String _titleLabel() {
     switch (currentMode) {
       case TrainingModeType.recall:
+        if (isReview) return 'REGULAR REVIEW';
         return 'RECALL MODE';
       case TrainingModeType.speed:
+        if (isReview) return 'SPEED REVIEW';
         return 'SPEED RECOGNITION';
       case TrainingModeType.errorBoss:
-        return 'BOSS FIGHT';
+        return 'CHALLENGE REVIEW — BOSS FIGHT';
       case TrainingModeType.drawing:
         return 'DRAWING PRACTICE';
       default:
         if (widget.lessonId == 'playground') return 'PLAYGROUND';
-        return (isReview ? 'REVIEW' : lesson?.title ?? 'PRACTICE')
-            .toUpperCase();
+        return isReview ? 'REVIEW' : lesson?.title ?? 'PRACTICE';
+    }
+  }
+
+  String _getSubtitle() {
+    switch (currentMode) {
+      case TrainingModeType.recall:
+        if (isReview) {
+          return 'Includes words you\'ve already learned. Practice them to build long-term retention.';
+        }
+        return '';
+      case TrainingModeType.speed:
+        if (isReview) {
+          return 'Quick-fire practice with learned words. Test your recall speed and accuracy.';
+        }
+        return '';
+      case TrainingModeType.errorBoss:
+        return 'Challenge Review — Focus on words you missed before. Practice will strengthen these weak areas and reduce them from your review queue.';
+      case TrainingModeType.drawing:
+        if (isReview) {
+          return 'Includes learned characters. Draw them to practice recall strength.';
+        }
+        return '';
+      default:
+        if (widget.lessonId == 'playground') return 'Free exploration mode';
+        return isReview ? '' : '';
+    }
+  }
+
+  String _getAnswerTypeLabel() {
+    switch (currentMode) {
+      case TrainingModeType.recall:
+        if (isReview) return 'Review item — Production';
+        return 'Production — Type your answer';
+      case TrainingModeType.speed:
+        if (isReview) return 'Review item — Recognition';
+        return 'Recognition — Select an option';
+      case TrainingModeType.errorBoss:
+        return 'Weak Item Practice';
+      case TrainingModeType.drawing:
+        if (isReview) return 'Review item — Drawing';
+        return 'Drawing practice';
+      default:
+        if (widget.lessonId == 'playground') return 'Interactive Quiz';
+        return isReview ? 'Review Item' : 'MCQ Recognition';
     }
   }
 
@@ -727,186 +943,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
       case TrainingModeType.speed:
         return 'Select the correct meaning quickly for combo bonus points';
       case TrainingModeType.errorBoss:
-        return 'Focus on the weak items you struggled with in previous sessions';
+        return 'Challenge Review — Focus on words you missed before';
       case TrainingModeType.drawing:
         return 'Write the character in the drawing area below';
       default:
-        return 'Select the correct meaning from the options';
+        if (widget.lessonId == 'playground') return 'PLAYGROUND';
+        return '';
     }
-  }
-
-  String _answerTypeLabel() {
-    switch (currentMode) {
-      case TrainingModeType.recall:
-        return 'Production — Type your answer';
-      case TrainingModeType.speed:
-        return 'Recognition — Select an option';
-      case TrainingModeType.errorBoss:
-        return 'Recycled Review Item';
-      default:
-        if (widget.lessonId == 'playground') return 'Interactive Quiz';
-        return isReview ? 'Review Item' : 'MCQ Recognition';
-    }
-  }
-}
-
-class _PracticeItem {
-  final String character;
-  final String pinyin;
-  final String answer;
-  final List<String> options;
-  final int level;
-  final String category;
-  final List<String> tags;
-  final TrainingModeType mode;
-  final String? hintCharacter;
-
-  const _PracticeItem({
-    required this.character,
-    required this.pinyin,
-    required this.answer,
-    required this.options,
-    this.level = 0,
-    this.category = '',
-    this.tags = const [],
-    this.mode = TrainingModeType.mcq,
-    this.hintCharacter,
-  });
-
-  factory _PracticeItem.fromMap(Map<String, dynamic> map) {
-    return _PracticeItem(
-      character: map['char'] as String? ?? '',
-      pinyin: map['pinyin'] as String? ?? '',
-      answer: map['meaning'] as String? ?? '',
-      options: (map['options'] as List<dynamic>? ?? const [])
-          .map((item) => item.toString())
-          .toList(),
-      level: map['level'] as int? ?? 0,
-      category: map['category'] as String? ?? '',
-      tags: (map['tags'] as List<dynamic>? ?? const [])
-          .map((item) => item.toString())
-          .toList(),
-      mode: map['mode'] as TrainingModeType? ?? TrainingModeType.mcq,
-      hintCharacter: map['char'] as String?,
-    );
-  }
-}
-
-class _DrawingPad extends StatelessWidget {
-  final String targetCharacter;
-  final List<List<Offset>> strokes;
-  final List<Offset> currentStroke;
-  final ValueChanged<DragStartDetails> onPanStart;
-  final ValueChanged<DragUpdateDetails> onPanUpdate;
-  final VoidCallback onPanEnd;
-  final VoidCallback onClear;
-
-  const _DrawingPad({
-    required this.targetCharacter,
-    required this.strokes,
-    required this.currentStroke,
-    required this.onPanStart,
-    required this.onPanUpdate,
-    required this.onPanEnd,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          height: 320,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: Text(
-                  targetCharacter,
-                  style: TextStyle(
-                    fontSize: 150,
-                    fontWeight: FontWeight.w200,
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
-                ),
-              ),
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: GestureDetector(
-                    onPanStart: onPanStart,
-                    onPanUpdate: onPanUpdate,
-                    onPanEnd: (_) => onPanEnd(),
-                    child: CustomPaint(
-                      painter: _StrokePainter(
-                        strokes: strokes,
-                        currentStroke: currentStroke,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 12,
-                bottom: 12,
-                child: OutlinedButton.icon(
-                  onPressed: onClear,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Clear'),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Trace over the faded hanzi or write it from memory, then submit.',
-          style: TextStyle(color: AppColors.textDim),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-}
-
-class _StrokePainter extends CustomPainter {
-  final List<List<Offset>> strokes;
-  final List<Offset> currentStroke;
-
-  const _StrokePainter({required this.strokes, required this.currentStroke});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.accent
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    for (final stroke in strokes) {
-      _drawStroke(canvas, stroke, paint);
-    }
-    _drawStroke(canvas, currentStroke, paint);
-  }
-
-  void _drawStroke(Canvas canvas, List<Offset> points, Paint paint) {
-    if (points.length < 2) return;
-    final path = Path()..moveTo(points.first.dx, points.first.dy);
-    for (final point in points.skip(1)) {
-      path.lineTo(point.dx, point.dy);
-    }
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _StrokePainter oldDelegate) {
-    return oldDelegate.strokes != strokes ||
-        oldDelegate.currentStroke != currentStroke;
   }
 }

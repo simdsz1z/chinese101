@@ -59,6 +59,15 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
+              if (service.weakItems.isNotEmpty) ...[
+                _infoCard(
+                  title: 'Weak Item Practice',
+                  value: '${service.weakItems.length}',
+                  subtitle:
+                      'Train on words you\'ve struggled with. Focus here to move them out of your review queue faster.',
+                ),
+                const SizedBox(height: 12),
+              ],
               _heroCard(
                 context,
                 service,
@@ -126,7 +135,7 @@ class HomeScreen extends StatelessWidget {
                       title: 'Review sessions',
                       value: '${profile.reviewSessionsCompleted}',
                       subtitle:
-                          'Review sessions help you retain what you learn. Earn bonus points for consistent practice.',
+                          'Review includes words you\'ve already learned. Practice them to build long-term retention.',
                     ),
                   ),
                 ],
@@ -375,10 +384,40 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  child: Text(
-                    reviewCount > 0
-                        ? 'Review Mode / $reviewCount cards'
-                        : 'Complete lessons first',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        reviewCount > 0
+                            ? 'Review Mode / $reviewCount cards'
+                            : 'Complete lessons first',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (reviewCount > 0) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.gold.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Includes words you\'ve already learned',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.gold,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

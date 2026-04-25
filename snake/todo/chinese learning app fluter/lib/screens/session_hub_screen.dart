@@ -61,8 +61,8 @@ class _SessionHubScreenState extends State<SessionHubScreen> {
                 ? 'Review'
                 : 'Playground',
             subtitle: widget.scope == SessionScope.review
-                ? 'Practice only what you have already reviewed, using the mode you choose.'
-                : 'Practice across the full library with filters, mode selection, and freer exploration.',
+                ? 'Regular Review includes words you\'ve already learned. Use this to build long-term retention.'
+                : 'Challenge Review focuses on words you\'ve missed in previous attempts. Practice them to master.',
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
